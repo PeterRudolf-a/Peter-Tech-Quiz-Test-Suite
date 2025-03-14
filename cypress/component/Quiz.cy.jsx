@@ -1,36 +1,60 @@
-import React from 'react';
-import Quiz from '../../client/src/components/Quiz'; // import the component we are testing
+import React from "react";
+import Quiz from "../../client/src/components/Quiz"; // Import the component we are testing
+import mockQuestions from "../fixtures/questions.json"; // Import the mock questions data
 
-// Test for the Quiz component
-describe('<Quiz />', () => {
-  it('renders without crashing', () => {
-    // mount the component
-    cy.mount(<Quiz />);
-    
-    // Check if the component renders and contains a heading
-    cy.get('h1').should('contain.text', 'Welcome to the Tech Quiz'); // replace with the actual header text in your component
-    
-    // Check if quiz question appears
-    cy.get('.quiz-question').should('exist'); // Adjust the class or element to match your component structure
-    
-    // Check if options/buttons are visible
-    cy.get('.quiz-option').should('have.length.greaterThan', 0); // Ensure there are some options
+// define tests for the Quiz component
+describe("<Quiz />", () => {
+  // before each test, intercept the request to the questions API and return the mock questions data
+  beforeEach(() => {
+    cy.intercept("GET", "/api/questions", (req) => {
+      console.log("Intercepted request: ", req);
+      req.reply({
+        statusCode: 200,
+        body: mockQuestions,
+      });
+    }).as("getQuestions");
   });
 
-  it('displays the correct number of questions', () => {
+  // test if the Quiz component renders without crashing
+  it("renders without crashing", () => {
     cy.mount(<Quiz />);
-    // Assuming your Quiz component has a certain number of questions
-    cy.get('.quiz-question').should('have.length', 20); // Replace with the actual number of questions in your quiz
+
+    // Check if the component renders and has a button to start the quiz
+    cy.contains("button", "Start Quiz").should("be.visible");
   });
 
-  it('handles button click to submit answer', () => {
+  // test if the Quiz component loads questions when the start quiz button is clicked
+  it("displays a score when the quiz is completed", () => {
     cy.mount(<Quiz />);
-    
-    // Simulate a click on the first option and submit
-    cy.get('.quiz-option').first().click(); // Adjust based on your component structure
-    cy.get('.submit-button').click(); // Replace with the actual class or element used for submission
-    
-    // Check if the result is displayed
-    cy.get('.quiz-result').should('be.visible'); // Adjust as needed for your component
+
+    // Start the quiz
+    cy.contains("button", "Start Quiz").click();
+
+    // Answer all questions
+    for (let i = 0; i < 10; i++) {
+      cy.get(".btn.btn-primary").first().click();
+    }
+
+    // Check if the final score is displayed
+    cy.contains(".alert", "Your score:").should("be.visible");
+  });
+
+  // test if the Quiz component allows the user to answer a question
+  it("allows the user to restart the quiz", () => {
+    cy.mount(<Quiz />);
+
+    // Start the quiz
+    cy.contains("button", "Start Quiz").click();
+
+    // Answer all questions
+    for (let i = 0; i < 10; i++) {
+      cy.get(".btn.btn-primary").first().click();
+    }
+
+    // Restart the quiz
+    cy.contains("button", "Take New Quiz").click();
+
+    // Check if the first question is displayed again
+    cy.get("h2").should("exist");
   });
 });
